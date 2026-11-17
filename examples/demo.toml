@@ -1,0 +1,19 @@
+# Cheap smoke test: ./bench.py run examples/demo.toml
+models = ["claude-haiku-4.5"]
+
+[settings]
+jobs = 6
+baseline = true
+
+[[skills]]
+id = "a"
+path = "skills/echo-a"
+
+[[skills]]
+id = "b"
+path = "skills/echo-b"
+
+[[tasks]]
+id = "fruit"
+prompt = "Give me a fruit fact."
+must_contain = ["FACT-"]

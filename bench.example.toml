@@ -1,0 +1,47 @@
+# Copy to bench.toml and edit. Paths are relative to this file.
+# Top-level keys (models) must come BEFORE any [table].
+
+# --- Models: plain name or { name, effort } ---
+models = ["claude-sonnet-5", "gpt-6.1-sol", { name = "claude-haiku-5.5", effort = "low" }]
+
+
+[settings]
+jobs = 6                 # parallel runs (each one fully isolated)
+repeats = 1              # runs per (skill, model, task); use 2-3 to smooth variance
+timeout = 600            # seconds per run
+baseline = false         # also run every task with NO skill installed (control group)
+# reasoning_effort = "medium"
+# max_ai_credits = 5     # soft cap per run
+# disable_builtin_mcps = true   # stop the agent answering via the GitHub MCP server instead of the skill
+# fixtures_dir = "fixtures"     # files copied into every run's working directory
+# keep_sandbox = false          # keep temp HOME/workdir for debugging
+
+# Credentials the skills need. Runs use an isolated HOME, so nothing from your
+# real ~/.copilot, ~/.agents/skills, MCP config or instructions leaks in.
+pass_env = ["CONFLUENCE_URL", "CONFLUENCE_USER", "CONFLUENCE_TOKEN"]
+# home_files = [".config/confluence", ".netrc"]   # copied from your real HOME
+# env = { ATLASSIAN_SITE = "mycompany.atlassian.net" }
+
+# --- Skills under test: local dir with SKILL.md, or a git repo (+ subdir) ---
+[[skills]]
+id = "conf-a"
+path = "~/skills/confluence-a"
+
+[[skills]]
+id = "conf-b"
+git = "https://github.com/someone/agent-skills"
+subdir = "skills/confluence"
+# ref = "v1.2.0"
+
+# --- Tasks: optional regex checks are applied to the final answer ---
+[[tasks]]
+id = "find-company"
+prompt = "Find information about Microsoft in Confluence and summarize it in 5 bullets."
+must_contain = ["Microsoft"]
+
+[[tasks]]
+id = "page-by-title"
+prompt = "Get the Confluence page titled 'Onboarding' in space ENG and list its section headings."
+must_contain = ["(?i)onboarding"]
+must_not_contain = ["could not find", "no results"]
+timeout = 300
