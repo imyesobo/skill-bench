@@ -1,28 +1,22 @@
-# Copy to bench.toml and edit. Paths are relative to this file.
-# Top-level keys (models) must come BEFORE any [table].
-
-# --- Models: plain name or { name, effort } ---
-models = ["claude-sonnet-5", "gpt-6.1-sol", { name = "claude-haiku-5.5", effort = "low" }]
-
+# Copy to bench.toml and edit. Relative paths are relative to this file.
+# Matrix = skills × agents × tasks × repeats. List harnesses with `./bench.py harnesses`.
 
 [settings]
 jobs = 6                 # parallel runs (each one fully isolated)
-repeats = 1              # runs per (skill, model, task); use 2-3 to smooth variance
+repeats = 1              # runs per (skill, agent, task); 2-3 smooths out variance
 timeout = 600            # seconds per run
 baseline = false         # also run every task with NO skill installed (control group)
-# reasoning_effort = "medium"
-# max_ai_credits = 5     # soft cap per run
-# disable_builtin_mcps = true   # stop the agent answering via the GitHub MCP server instead of the skill
-# fixtures_dir = "fixtures"     # files copied into every run's working directory
-# keep_sandbox = false          # keep temp HOME/workdir for debugging
+# fixtures_dir = "fixtures"   # files copied into every run's working directory
+# keep_sandbox = false        # keep the temp HOME/workdir for debugging
 
-# Credentials the skills need. Runs use an isolated HOME, so nothing from your
-# real ~/.copilot, ~/.agents/skills, MCP config or instructions leaks in.
+# Every run gets an empty HOME, so nothing from your personal agent config
+# (skills, MCP servers, instructions, memories, plugins) is loaded.
+# Pass in only what the skills under test need:
 pass_env = ["CONFLUENCE_URL", "CONFLUENCE_USER", "CONFLUENCE_TOKEN"]
 # home_files = [".config/confluence", ".netrc"]   # copied from your real HOME
 # env = { ATLASSIAN_SITE = "mycompany.atlassian.net" }
 
-# --- Skills under test: local dir with SKILL.md, or a git repo (+ subdir) ---
+# --- Skills under test: a local folder with SKILL.md, or a git repo (+ subdir) ---
 [[skills]]
 id = "conf-a"
 path = "~/skills/confluence-a"
@@ -32,6 +26,36 @@ id = "conf-b"
 git = "https://github.com/someone/agent-skills"
 subdir = "skills/confluence"
 # ref = "v1.2.0"
+
+# --- Agents = harness + model (+ optional effort, cost cap, extra args/env) ---
+[[agents]]
+id = "copilot-sonnet"
+harness = "copilot"
+model = "claude-sonnet-5"
+
+[[agents]]
+id = "claude-opus"
+harness = "claude-code"
+model = "opus"
+effort = "medium"
+# max_cost = 2            # harness-native cap (Copilot: AIC, Claude Code: USD)
+
+[[agents]]
+id = "opencode-gpt"
+harness = "opencode"
+model = "github-copilot/gpt-6.1-sol"
+# home_files = [".config/opencode/opencode.json"]   # needed for custom providers (e.g. Ollama)
+
+# Any other agent CLI: describe how to call it.
+# Placeholders: {prompt} {model} {effort} {outdir}. stdout is taken as the answer.
+# [[agents]]
+# id = "gemini-pro"
+# harness = "generic"
+# model = "gemini-3-pro"
+# command = ["gemini", "-m", "{model}", "--yolo", "-p", "{prompt}"]
+# skills_dir = ".gemini/skills"
+# auth_env = ["GEMINI_API_KEY"]
+# auth_home_files = [".gemini/oauth_creds.json"]
 
 # --- Tasks: optional regex checks are applied to the final answer ---
 [[tasks]]

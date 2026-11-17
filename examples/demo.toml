@@ -1,8 +1,8 @@
 # Cheap smoke test: ./bench.py run examples/demo.toml
-models = ["claude-haiku-4.5"]
+# Remove the agents whose CLI you don't have installed.
 
 [settings]
-jobs = 6
+jobs = 8
 baseline = true
 
 [[skills]]
@@ -12,6 +12,16 @@ path = "skills/echo-a"
 [[skills]]
 id = "b"
 path = "skills/echo-b"
+
+[[agents]]
+id = "copilot-haiku"
+harness = "copilot"
+model = "claude-haiku-4.5"
+
+[[agents]]
+id = "opencode-haiku"
+harness = "opencode"
+model = "github-copilot/claude-haiku-4.5"
 
 [[tasks]]
 id = "fruit"

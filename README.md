@@ -1,39 +1,50 @@
 # skill-bench
 
-Benchmark several Copilot CLI skills that target the same task (e.g. Confluence
-extraction) across several models, and capture quality, time, tokens and AI credits.
+Benchmark [Agent Skills](https://agentskills.io) (`SKILL.md` folders) that target the same job, for example
+several Confluence-extraction skills. You can compare them across **agent harnesses** (Copilot CLI,
+Claude Code, OpenCode, or any CLI) and **models**, and the benchmark records answer quality, time,
+tokens and cost for each run.
 
-## Why it's safe to compare skills
-Each run of a (skill, model, task, repeat) combination gets a brand-new temporary `HOME`, `COPILOT_HOME` and working directory
-that contains **only the skill under test** (as a project skill). Your real
-`~/.copilot` (skills, MCP servers, instructions, memories, plugins) and
-`~/.agents/skills` are never loaded. Each run is a new session, so AIC starts at 0.
-The harness also checks which skill the agent actually called and flags any run where the target skill
-wasn't used or a different skill was. Built-in CLI skills can't be removed.
+## Why comparisons are fair
+Every run gets a fresh temporary `HOME` (with XDG directories) and a working folder. That folder contains
+**only the skill under test**, placed where that harness looks for project skills.
+Your personal agent setup (installed skills, MCP servers, instructions, memories, plugins) is
+never loaded. Only the auth files and env vars you list are copied in. The harness's own
+session log is checked to see which skill was actually used. A run is flagged if the target skill
+wasn't used or another skill was. Built-in skills that ship with a harness can't be removed.
 
-## Why it's fast
-Because runs are isolated, they run in parallel (`jobs`). Install and uninstall
-happen automatically (copy the skill folder, then delete the temp dir). The harness itself uses no AI credits.
+## Why it's fast and cheap
+Isolated runs execute in parallel (`jobs`). Skills are installed and removed automatically:
+the folder is copied in and the sandbox is deleted afterwards. The benchmark itself makes no LLM calls.
+
+## Supported harnesses
+| harness | skills placed in | cost unit | tested |
+|---|---|---|---|
+| `copilot` (GitHub Copilot CLI) | `.github/skills/` | AI credits (AIC) | ✅ |
+| `opencode` | `.agents/skills/` | USD (OpenCode's list-price estimate) | ✅ |
+| `claude-code` | `.claude/skills/` | USD | install + error handling ✅, live run not yet |
+| `generic` (any CLI, defined in TOML) | configurable | – (time + checks only) | ✅ |
+
+Each harness reports cost in its own unit, so cost is only comparable between agents that use the same harness.
+To add a native adapter for another CLI, subclass `Harness` in `harnesses.py`. It needs four things:
+`skills_dir`, `prepare` (copying auth/env into the sandbox), `command`, and `parse`.
 
 ## Usage
 ```bash
-cp bench.example.toml bench.toml   # define skills, models, tasks
-./bench.py run bench.toml --dry-run                 # show the run matrix
-./bench.py run bench.toml -j 8                      # run everything
-./bench.py run bench.toml --only-skill conf-a --only-model claude-sonnet-5
-./bench.py report results/<timestamp>               # rebuild summary after manual scoring
-./bench.py run examples/demo.toml                   # ~10s smoke test with dummy skills
+cp bench.example.toml bench.toml   # define skills, agents (harness + model), tasks
+./bench.py harnesses                         # list adapters
+./bench.py run bench.toml --dry-run          # show the run matrix and commands
+./bench.py run bench.toml -j 8               # run everything
+./bench.py run bench.toml --only-skill conf-a --only-agent claude-opus
+./bench.py report results/<timestamp>        # rebuild summary after manual scoring
+./bench.py run examples/demo.toml            # ~10s smoke test with dummy skills
 ```
-Auth uses `COPILOT_GITHUB_TOKEN`/`GH_TOKEN`, or falls back to `gh auth token`. Skill credentials
-come in through `pass_env` and `home_files`.
+The run matrix is skills × agents × tasks × repeats. Set `baseline = true` to also run each task with no skill installed.
+Requires Python 3.11+ and no extra packages.
 
 ## Output (`results/<timestamp>/`)
-- `summary.md`: per skill×model averages (skill-used rate, regex pass rate, manual
-  score, wall time, AIC, premium requests, model calls, tokens, tool calls) plus a per-run table and warnings.
-- `results.csv`: one row per run. Fill `manual_score` and `notes`, then run `report` again.
-- `runs/<id>/`: `answer.md`, `events.jsonl` (full event stream), `usage.json`
-  (CLI usage stats), `stderr.txt`, `command.txt`, `metrics.json`.
-
-Tips: set `baseline = true` to see what the model does without any skill.
-Use `repeats = 2-3` to reduce noise. Set `disable_builtin_mcps = true` if the agent
-uses the GitHub MCP server instead of your skill.
+- `summary.md`: averages for each skill × agent: how often the skill was used, regex pass rate,
+  manual score, wall time, cost, model calls, tokens and tool calls. Also includes a per-run table and warnings.
+- `results.csv`: one row per run. Fill in `manual_score` and `notes`, then run `report` again.
+- `runs/<id>/`: `answer.md`, the harness's raw `stdout.txt` and `stderr.txt`, `command.json`, `metrics.json`,
+  and harness extras such as Copilot's `usage.json`.

@@ -1,3 +1,4 @@
 results/
 .skill-cache/
 bench.toml
+__pycache__/
